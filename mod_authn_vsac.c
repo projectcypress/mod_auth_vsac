@@ -892,14 +892,16 @@ static apr_byte_t readVSACCacheFile(request_rec *r, vsac_cfg *c, char *name,
 	apr_file_t *f;
 	apr_finfo_t fi;
 	apr_xml_parser *parser;
-	apr_xml_doc *doc;
-	apr_xml_elem *e;
+	apr_xml_doc *doc = NULL;
+	apr_xml_elem *e = NULL;
 	char errbuf[VSAC_MAX_ERROR_SIZE];
 	char *path, *val;
 	int i;
 
-	if(c->vsac_debug)
+	if(c->vsac_debug) {
 		ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, "entering readVSACCacheFile()");
+		ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, "using cookie: '%s'", name);
+	}
 
 	/* first, validate that cookie looks like an MD5 string */
 	if(strlen(name) != APR_MD5_DIGESTSIZE*2) {
@@ -931,6 +933,17 @@ static apr_byte_t readVSACCacheFile(request_rec *r, vsac_cfg *c, char *name,
 	/* open the file if it exists and make sure that the ticket has not expired */
 	path = apr_psprintf(r->pool, "%s%s", c->vsac_cookie_path, name);
 
+	/* Check that the file isn't 0 length */
+	if(apr_stat(&fi, path, APR_FINFO_SIZE, r->pool) == APR_INCOMPLETE) {
+		ap_log_rerror(APLOG_MARK, APLOG_ERR, 0, r, "MOD_AUTH_VSAC: Could not get size of cookie file '%s'", path);
+		return FALSE;
+	}
+	if(fi.size == 0) {
+		if(c->vsac_debug)
+			ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, "MOD_AUTH_VSAC: Cookie file '%s' has 0 length -- invalid.", path);
+		return FALSE;
+	}
+
 	if(apr_file_open(&f, path, APR_FOPEN_READ, APR_OS_DEFAULT, r->pool) != APR_SUCCESS) {
 		if(c->vsac_debug)
 			ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, "Cache entry '%s' could not be opened", name);
@@ -948,7 +961,8 @@ static apr_byte_t readVSACCacheFile(request_rec *r, vsac_cfg *c, char *name,
 		return FALSE;
 	}
 
-	e = doc->root->first_child;
+	if(doc)
+		e = doc->root->first_child;
 	/* XML structure: 
  	 * cacheEntry
 	 *	attr
@@ -973,7 +987,7 @@ static apr_byte_t readVSACCacheFile(request_rec *r, vsac_cfg *c, char *name,
 		if(e->first_cdata.first != NULL)
 			val = (char *)  e->first_cdata.first->text;
 		else
-			val = NULL; 
+			val = NULL;
 
 		if (apr_strnatcasecmp(e->name, "user") == 0)
 			cache->user = apr_pstrndup(r->pool, val, strlen(val));
