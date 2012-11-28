@@ -38,7 +38,7 @@ typedef int socket_t;
 #define PROXY_CONNECT_RESPONSE "HTTP/1.0 200 Connection established"
 
 /* Default values for configuration settings */
-#define VSAC_DEFAULT_USERVALIDATE_URL NULL
+#define VSAC_DEFAULT_USERVALIDATE_URL "https://uts-ws.nlm.nih.gov/restful/IsValidUMLSUser"
 #define VSAC_DEFAULT_LICENSE_CODE NULL
 #define VSAC_DEFAULT_USE_PROXY FALSE
 #define VSAC_DEFAULT_PROXY_HOST NULL
