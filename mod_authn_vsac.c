@@ -409,6 +409,7 @@ static const char *getResponseFromServer(request_rec *r, const char *user,
   char *validateRequest, validateResponse[VSAC_MAX_RESPONSE_SIZE];
   apr_finfo_t f;
   char *payload;
+  char *encoded_license = NULL, *encoded_user = NULL, *encoded_passwd = NULL;
   int i, bytesIn;
   socket_t s = INVALID_SOCKET;
   vsac_cfg *c = ap_get_module_config(r->server->module_config, &authn_vsac_module);
@@ -599,8 +600,11 @@ ap_log_rerror(APLOG_MARK, APLOG_DEBUG, 0, r, "Using CA file");
    * Connection: close header as the default behavior for HTTP/1.0 is
    * Connection: close
    */
+  encoded_license = url_encode(r->pool, dc->vsac_license_code);
+  encoded_user    = url_encode(r->pool, user);
+  encoded_passwd  = url_encode(r->pool, password);
   payload = apr_psprintf(r->pool, "licenseCode=%s&user=%s&password=%s",
-    dc->vsac_license_code, user, password);
+    encoded_license, encoded_user, encoded_passwd);
   if(c->vsac_use_proxy && !isSSL(&(c->vsac_uservalidate_url))) {
     validateRequest = apr_psprintf(r->pool,
       "POST %s HTTP/1.0\nHost: %s\nContent-type: application/x-www-form-urlencoded\n"
@@ -1365,6 +1369,33 @@ static void register_hooks(apr_pool_t *p)
   ap_hook_post_config(vsac_post_config, NULL, NULL, APR_HOOK_MIDDLE);
   ap_register_provider(p, AUTHN_PROVIDER_GROUP, "vsac", "0",
                        &authn_vsac_provider);
+}
+
+/**
+ * This function converts the given input string to an URL encoded string and
+ * returns that as a new allocated string. All input characters that are not
+ * a-z, A-Z, 0-9, '-', '.', '_' or '~' are converted to their "URL escaped"
+ * version (%NN where NN is a two-digit hexadecimal number).
+ */
+static char *url_encode(apr_pool_t *pool, const char *str) {
+  static char hex[] = "0123456789abcdef";
+  const char *pstr = str;
+  char *buf = (char *)apr_palloc(pool, strlen(str) * 3 + 1); /* maximum size if every char escaped */
+  char *pbuf = buf;
+  while (*pstr) {
+    if (isalnum(*pstr) || *pstr == '-' || *pstr == '_' || *pstr == '.' || *pstr == '~')
+      *pbuf++ = *pstr;
+    else if (*pstr == ' ')
+      *pbuf++ = '+';
+    else {
+      *pbuf++ = '%';
+      *pbuf++ = hex[(*pstr >>4) & 0xf];
+      *pbuf++ = hex[*pstr & 0xf];
+    }
+    pstr++;
+  }
+  *pbuf = '\0';
+  return buf;
 }
 
 module AP_MODULE_DECLARE_DATA authn_vsac_module =

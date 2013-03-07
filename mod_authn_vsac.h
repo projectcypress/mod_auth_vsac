@@ -113,5 +113,6 @@ static void VSACCleanCache(request_rec *r, vsac_cfg *c);
 static apr_byte_t writeVSACCacheEntry(request_rec *r, char *name, vsac_cache_entry *cache, apr_byte_t exists);
 static char *createVSACCookie(request_rec *r, char *user, char *ticket);
 static void setVSACCookie(request_rec *r, char *cookieName, char *cookieValue, apr_byte_t secure);
+static char *url_encode(apr_pool_t *pool, const char *str);
 
 #endif /* MOD_AUTHN_VSAC_H */
