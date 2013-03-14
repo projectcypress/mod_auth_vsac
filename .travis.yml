@@ -2,6 +2,6 @@ before_install:
    - sudo apt-get -y update
    - sudo apt-get -y install apache2-threaded-dev
    - sudo apt-get -y install lynx 
-before_script: ./travis/switch_make.sh 
+before_script: ./.travis/switch_make.sh 
 script: make all
 language: c
