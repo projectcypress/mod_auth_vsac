@@ -11,6 +11,10 @@
  *
  * Author: Tim Taylor <ttaylor@mitre.org>
  * Date: 25 Oct. 2012
+ *
+ * Changes:
+ * - 23 Jan 2015 - Removed the certificate trust check for each intermediate
+ *      CA in the chain presented by the remote server.
  ****************************************************************************/
 
 #include <unistd.h>
@@ -350,8 +354,9 @@ static apr_byte_t check_cert_cn(request_rec *r, vsac_cfg *c, SSL_CTX *ctx, X509 
   X509_STORE_CTX_init(xctx, store, certificate, sk_X509_new_null());
 
   /* this may be redundant, since we require peer verification to perform the handshake */
-  if(X509_verify_cert(xctx) == 0)
-    return FALSE;
+  /* if(X509_verify_cert(xctx) == 0)
+   *   return FALSE;
+   */
 
   X509_NAME_get_text_by_NID(X509_get_subject_name(certificate), NID_commonName, buf, sizeof(buf) - 1);
   if(c->vsac_debug)
